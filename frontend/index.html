@@ -1,0 +1,1534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Wind and Solar Power Forecaster</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      background: #eef5f0;
+      color: #1e293b;
+      min-height: 100vh;
+    }
+
+    /* ── HERO ─────────────────────────────────────────────────── */
+    .hero {
+      background: linear-gradient(170deg, #0c4a6e 0%, #0369a1 52%, #38bdf8 100%);
+      min-height: 210px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 3rem 2rem 3.5rem;
+      position: relative;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.16);
+      border: 1px solid rgba(255,255,255,0.28);
+      color: rgba(255,255,255,0.88);
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.32rem 1rem;
+      border-radius: 999px;
+      margin-bottom: 1.1rem;
+    }
+    .hero h1 {
+      color: white;
+      font-size: clamp(1.8rem, 4.5vw, 2.85rem);
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      line-height: 1.12;
+      margin-bottom: 0.8rem;
+      text-shadow: 0 2px 14px rgba(0,0,0,0.22);
+    }
+    .hero p {
+      color: rgba(255,255,255,0.72);
+      font-size: 0.9rem;
+      max-width: 500px;
+      line-height: 1.6;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: 26px;
+      right: 13%;
+      width: 60px;
+      height: 60px;
+      background: radial-gradient(circle,
+        rgba(255,253,200,0.32) 0%,
+        rgba(255,253,200,0.12) 45%,
+        transparent 72%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+
+    /* ── LANDSCAPE DIVIDER ────────────────────────────────────── */
+    .landscape {
+      background: #2d6a4a;
+      line-height: 0;
+      display: block;
+    }
+    .landscape svg { display: block; width: 100%; }
+
+    /* ── LAYOUT ───────────────────────────────────────────────── */
+    main { max-width: 1200px; margin: 0 auto; padding: 2.5rem 2rem 5rem; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* ── Source selector card ─────────────────────────────────── */
+    .source-card {
+      background: white;
+      border-radius: 16px;
+      padding: 1.1rem 2rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-bottom: 1.25rem;
+      border: 1px solid rgba(0,0,0,0.04);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .source-card label {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      white-space: nowrap;
+    }
+    .source-card select {
+      padding: 0.55rem 0.9rem;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      background: #f9fafb;
+      color: #1e293b;
+      cursor: pointer;
+      min-width: 230px;
+    }
+
+    /* ── Run card ─────────────────────────────────────────────── */
+    .run-card {
+      background: white;
+      border-radius: 16px;
+      padding: 1.75rem 2rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-bottom: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+    .run-card-info h2 { font-size: 1.15rem; font-weight: 700; color: #0f172a; }
+    .run-card-info p  { color: #64748b; font-size: 0.84rem; margin-top: 0.35rem; line-height: 1.55; }
+    .run-card-info p strong { color: #334155; }
+
+    /* ── Buttons ──────────────────────────────────────────────── */
+    .btn-run {
+      background: #1d4ed8;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 0.75rem 1.75rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+      box-shadow: 0 2px 8px rgba(29,78,216,0.35);
+      min-width: 170px;
+      justify-content: center;
+    }
+    .btn-run:hover:not(:disabled) { background: #1e40af; box-shadow: 0 4px 14px rgba(29,78,216,0.4); }
+    .btn-run:active  { transform: scale(0.97); }
+    .btn-run:disabled { background: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Download buttons ─────────────────────────────────────── */
+    .download-row {
+      display: flex;
+      gap: 0.75rem;
+      padding: 0.75rem 1.4rem 1.25rem;
+      flex-wrap: wrap;
+    }
+    .btn-download {
+      background: white;
+      color: #1d4ed8;
+      border: 1.5px solid #1d4ed8;
+      border-radius: 10px;
+      padding: 0.6rem 1.25rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-download:hover { background: #eff6ff; }
+
+    /* spinner */
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2.5px solid rgba(255,255,255,0.35);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: none;
+    }
+    .btn-run.loading .spinner   { display: block; }
+    .btn-run.loading .btn-label { display: none; }
+
+    /* ── Banner ───────────────────────────────────────────────── */
+    .banner {
+      border-radius: 10px;
+      padding: 0.9rem 1.25rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      display: none;
+    }
+    .banner.error { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; display: block; }
+    .banner.info  { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; display: block; }
+
+    /* ── Results ──────────────────────────────────────────────── */
+    .results { display: none; }
+    .results.visible { display: block; animation: fadeUp 0.35s ease; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .results-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1.75rem;
+      flex-wrap: wrap;
+    }
+    .results-header h2 { font-size: 1.2rem; font-weight: 700; color: #0f172a; }
+    .market-chip {
+      background: #dbeafe;
+      color: #1e40af;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.25rem 0.75rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .city-chip {
+      margin-left: auto;
+      color: #64748b;
+      font-size: 0.82rem;
+    }
+
+    /* ── Fuel section ─────────────────────────────────────────── */
+    .fuel-section {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-bottom: 2rem;
+      overflow: hidden;
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+    .fuel-wind  { border-top: 4px solid #1d4ed8; }
+    .fuel-solar { border-top: 4px solid #d97706; }
+
+    .fuel-header {
+      padding: 1.25rem 1.75rem;
+      border-bottom: 1px solid #f1f5f9;
+      display: flex;
+      align-items: center;
+      gap: 0.7rem;
+      flex-wrap: wrap;
+    }
+    .fuel-icon  { font-size: 1.35rem; line-height: 1; }
+    .fuel-title { font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+    .best-summary {
+      margin-left: auto;
+      background: #dcfce7;
+      color: #15803d;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 0.3rem 0.85rem;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* ── Model comparison grid ────────────────────────────────── */
+    .model-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+    }
+    .model-col {
+      padding: 1.5rem 1.75rem;
+      border-right: 1px solid #f1f5f9;
+    }
+    .model-col:last-child { border-right: none; }
+
+    .model-col-hdr {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.1rem;
+    }
+    .model-col-hdr h4 {
+      font-size: 0.73rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+    }
+    .best-pill {
+      background: #dcfce7;
+      color: #15803d;
+      font-size: 0.62rem;
+      font-weight: 700;
+      padding: 0.18rem 0.6rem;
+      border-radius: 999px;
+    }
+
+    .r2-num  { font-size: 2.8rem; font-weight: 800; line-height: 1; letter-spacing: -0.02em; }
+    .r2-meta { font-size: 0.73rem; color: #94a3b8; font-weight: 500; margin: 0.28rem 0 0.55rem; }
+
+    .r2-bar-track {
+      height: 6px;
+      background: #f1f5f9;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 1.1rem;
+    }
+    .r2-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.65s ease;
+    }
+
+    .eq-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 7px;
+      padding: 0.6rem 0.8rem;
+      font-family: "Courier New", Courier, monospace;
+      font-size: 0.68rem;
+      color: #475569;
+      word-break: break-all;
+      line-height: 1.55;
+      max-height: 72px;
+      overflow-y: auto;
+      margin-bottom: 1.1rem;
+    }
+
+    /* ── Plots ────────────────────────────────────────────────── */
+    .plots-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+    .plot-label {
+      font-size: 0.64rem;
+      font-weight: 700;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      margin-bottom: 0.35rem;
+    }
+    .plot-wrap img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #e2e8f0;
+      cursor: zoom-in;
+      transition: opacity 0.15s, box-shadow 0.15s;
+      display: block;
+    }
+    .plot-wrap img:hover { opacity: 0.92; box-shadow: 0 4px 16px rgba(0,0,0,0.12); }
+
+    /* ── Footer row ───────────────────────────────────────────── */
+    .fuel-footer {
+      padding: 0.9rem 1.75rem;
+      background: #f8fafc;
+      border-top: 1px solid #f1f5f9;
+      font-size: 0.76rem;
+      color: #64748b;
+    }
+    .fuel-footer strong { color: #1e293b; font-family: "Courier New", monospace; font-size: 0.69rem; }
+
+    /* ── Skipped fuel card ────────────────────────────────────── */
+    .skipped-body {
+      padding: 1.75rem;
+      color: #64748b;
+      font-size: 0.88rem;
+      line-height: 1.65;
+    }
+    .skipped-body em { color: #94a3b8; font-size: 0.82rem; }
+
+    /* ── Upload panel ─────────────────────────────────────────── */
+    .upload-disclaimer {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-left: 4px solid #f59e0b;
+      border-radius: 10px;
+      padding: 1.1rem 1.4rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.87rem;
+      color: #78350f;
+      line-height: 1.6;
+    }
+    .upload-disclaimer strong {
+      display: block;
+      font-size: 0.84rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #92400e;
+      margin-bottom: 0.55rem;
+    }
+    .upload-disclaimer ul {
+      margin: 0.5rem 0 0 1.1rem;
+      padding: 0;
+    }
+    .upload-disclaimer ul li { margin-bottom: 0.3rem; }
+    .upload-disclaimer code {
+      background: #fef3c7;
+      border-radius: 4px;
+      padding: 0.05em 0.35em;
+      font-size: 0.83rem;
+      font-family: monospace;
+      color: #78350f;
+    }
+    .upload-card {
+      background: white;
+      border-radius: 16px;
+      padding: 2.25rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      margin-bottom: 2rem;
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+    .form-section-title {
+      font-size: 0.76rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      color: #64748b;
+      margin-bottom: 1.1rem;
+      padding-bottom: 0.45rem;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .form-row { margin-bottom: 1.15rem; }
+    .form-row label {
+      display: block;
+      font-size: 0.84rem;
+      font-weight: 500;
+      color: #374151;
+      margin-bottom: 0.38rem;
+    }
+    .form-row select,
+    .form-row input[type="text"] {
+      width: 100%;
+      padding: 0.65rem 0.9rem;
+      border: 1px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.88rem;
+      background: #f9fafb;
+      color: #1e293b;
+      appearance: auto;
+    }
+    .form-split { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    .dropzone {
+      border: 2px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: 2.75rem 1rem;
+      text-align: center;
+      color: #94a3b8;
+      background: #f8fafc;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s, color 0.2s;
+    }
+    .dropzone:hover,
+    .dropzone.drag-over {
+      border-color: #1d4ed8;
+      background: #eff6ff;
+      color: #1d4ed8;
+    }
+    .dropzone-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .dropzone p    { font-size: 0.85rem; margin-bottom: 0.3rem; }
+    .dropzone small { font-size: 0.75rem; }
+
+    /* ── Forecast section ─────────────────────────────────────── */
+    .forecast-section { margin-top: 0.5rem; }
+
+    .forecast-layout {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 1.25rem;
+      align-items: start;
+    }
+    .forecast-left-col {
+      position: sticky;
+      top: 70px;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+    }
+    .forecast-map-wrap {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      border: 1px solid rgba(0,0,0,0.04);
+      border-top: 4px solid #0f766e;
+    }
+    .forecast-map { height: 220px; width: 100%; }
+    .forecast-map-caption {
+      padding: 0.7rem 1rem 0.8rem;
+      font-size: 0.8rem;
+      color: #475569;
+      line-height: 1.55;
+      border-top: 1px solid #f1f5f9;
+    }
+    .forecast-map-caption strong { color: #0f172a; }
+    .forecast-map-caption small  { color: #94a3b8; font-size: 0.72rem; }
+
+    /* ── Weather module ────────────────────────────────────────── */
+    .weather-module {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      border: 1px solid rgba(0,0,0,0.04);
+      border-top: 4px solid #6366f1;
+    }
+    .weather-module-hdr {
+      padding: 0.65rem 1rem;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.09em;
+      border-bottom: 1px solid #f1f5f9;
+      background: #fafbff;
+    }
+    .weather-table-scroll {
+      max-height: 260px;
+      overflow-y: auto;
+    }
+    .weather-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.7rem;
+    }
+    .weather-table thead th {
+      position: sticky;
+      top: 0;
+      background: #f8fafc;
+      padding: 0.38rem 0.5rem;
+      text-align: right;
+      font-weight: 700;
+      color: #64748b;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+    .weather-table thead th:first-child { text-align: left; }
+    .weather-table tbody td {
+      padding: 0.28rem 0.5rem;
+      text-align: right;
+      color: #334155;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .weather-table tbody td:first-child { text-align: left; color: #64748b; font-size: 0.67rem; }
+    .weather-table tbody tr:nth-child(even) td { background: #f8fafc; }
+
+    .forecast-charts-col {
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      min-width: 0;
+    }
+    .forecast-run-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: white;
+      border-radius: 16px;
+      padding: 1.25rem 1.75rem;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 1.1rem;
+      border: 1px solid rgba(0,0,0,0.04);
+      color: #0f172a;
+    }
+    .btn-forecast {
+      background: #0f766e;
+      min-width: 180px;
+      box-shadow: 0 2px 8px rgba(15,118,110,0.35);
+    }
+    .btn-forecast:hover:not(:disabled) {
+      background: #0d9488;
+      box-shadow: 0 4px 14px rgba(13,148,136,0.4);
+    }
+
+    .forecast-wrap {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+      overflow: hidden;
+      animation: fadeUp 0.35s ease;
+      border: 1px solid rgba(0,0,0,0.04);
+    }
+    .forecast-wrap.forecast-wind  { border-top: 4px solid #3b82f6; }
+    .forecast-wrap.forecast-solar { border-top: 4px solid #f59e0b; }
+    .forecast-meta {
+      padding: 0.9rem 1.4rem;
+      font-size: 0.84rem;
+      color: #475569;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    /* ── Forecast confidence badge ────────────────────────────── */
+    .confidence-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.65rem 1.4rem 0.7rem;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 0.82rem;
+      color: #64748b;
+    }
+    .confidence-label {
+      font-weight: 600;
+      letter-spacing: 0.02em;
+    }
+    .confidence-track {
+      flex: 1;
+      height: 7px;
+      background: #e2e8f0;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .confidence-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width 0.6s ease;
+    }
+    .confidence-badge {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0.18em 0.65em;
+      border-radius: 99px;
+      white-space: nowrap;
+    }
+    .conf-high   .confidence-fill  { background: #22c55e; }
+    .conf-high   .confidence-badge { background: #dcfce7; color: #15803d; }
+    .conf-mod    .confidence-fill  { background: #f59e0b; }
+    .conf-mod    .confidence-badge { background: #fef3c7; color: #92400e; }
+    .conf-low    .confidence-fill  { background: #ef4444; }
+    .conf-low    .confidence-badge { background: #fee2e2; color: #b91c1c; }
+    .conf-none   .confidence-fill  { background: #94a3b8; }
+    .conf-none   .confidence-badge { background: #f1f5f9; color: #64748b; }
+
+    /* ── Lightbox ─────────────────────────────────────────────── */
+    .lightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img {
+      max-width: 92vw;
+      max-height: 88vh;
+      border-radius: 8px;
+      box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    }
+    .lb-close {
+      position: absolute;
+      top: 1.25rem; right: 1.75rem;
+      color: white;
+      font-size: 2rem;
+      cursor: pointer;
+      line-height: 1;
+      opacity: 0.85;
+      transition: opacity 0.15s;
+    }
+    .lb-close:hover { opacity: 1; }
+
+    /* ── Responsive ───────────────────────────────────────────── */
+    @media (max-width: 800px) {
+      main { padding: 1.25rem 1rem 3rem; }
+      .model-grid   { grid-template-columns: 1fr; }
+      .model-col    { border-right: none; border-bottom: 1px solid #f1f5f9; }
+      .plots-row    { grid-template-columns: 1fr; }
+      .form-split   { grid-template-columns: 1fr; }
+      .run-card     { padding: 1.25rem; }
+      .hero h1          { font-size: 1.65rem; }
+      .hero             { padding: 2rem 1.25rem 3rem; min-height: 170px; }
+      .forecast-layout  { grid-template-columns: 1fr; }
+      .forecast-map     { height: 200px; }
+      .forecast-left-col { position: static; }
+      .source-card  { flex-wrap: wrap; }
+      .source-card select { min-width: 0; width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HERO ──────────────────────────────────────────────────── -->
+<div class="hero">
+  <div class="hero-badge">BV01 EDP</div>
+  <h1>Wind &amp; Solar Power Forecaster</h1>
+  <p>Regression-based generation modelling with real-time weather forecasting via Open-Meteo</p>
+</div>
+
+<!-- ── LANDSCAPE DIVIDER ─────────────────────────────────────── -->
+<div class="landscape">
+  <svg viewBox="0 0 1440 80" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+
+    <!-- Ground -->
+    <rect width="1440" height="80" fill="#2d6a4a"/>
+
+    <!-- Sky fill -->
+    <path d="M0,55 C180,15 380,75 640,38 C880,5 1100,68 1300,32 C1380,16 1420,42 1440,28 L1440,0 L0,0 Z"
+          fill="#38bdf8"/>
+
+    <!-- ── SUN GLOW ─────────────────────────────────────────────── -->
+    <circle cx="1200" cy="16" r="9"  fill="rgba(255,253,200,0.26)"/>
+    <circle cx="1200" cy="16" r="15" fill="rgba(255,253,200,0.10)"/>
+    <circle cx="1200" cy="16" r="22" fill="rgba(255,253,200,0.04)"/>
+
+    <!-- ── WIND TURBINE 1 ───────────────────────────────────────── -->
+    <g fill="rgba(255,255,255,0.22)">
+      <polygon points="158.8,42 161.2,42 160.5,20 159.5,20"/>
+      <polygon points="159.5,20 160.5,20 160,12"/>
+      <polygon points="159.75,20.43 160.25,19.57 166.93,24"/>
+      <polygon points="159.75,19.57 160.25,20.43 153.07,24"/>
+      <circle  cx="160" cy="20" r="1.3"/>
+    </g>
+
+    <!-- ── WIND TURBINE 2 ───────────────────────────────────────── -->
+    <g fill="rgba(255,255,255,0.22)">
+      <polygon points="898.8,38 901.2,38 900.6,12 899.4,12"/>
+      <polygon points="899.5,12 900.5,12 900,2"/>
+      <polygon points="899.75,12.43 900.25,11.57 908.66,17"/>
+      <polygon points="899.75,11.57 900.25,12.43 891.34,17"/>
+      <circle  cx="900" cy="12" r="1.5"/>
+    </g>
+
+    <!-- ── WIND TURBINE 3 ───────────────────────────────────────── -->
+    <g fill="rgba(255,255,255,0.20)">
+      <polygon points="1298.8,58 1301.2,58 1300.5,38 1299.5,38"/>
+      <polygon points="1299.5,38 1300.5,38 1300,31"/>
+      <polygon points="1299.75,38.43 1300.25,37.57 1306.06,41.5"/>
+      <polygon points="1299.75,37.57 1300.25,38.43 1293.94,41.5"/>
+      <circle  cx="1300" cy="38" r="1.2"/>
+    </g>
+
+    <!-- ── SOLAR PANELS 1 ───────────────────────────────────────── -->
+    <g fill="rgba(255,255,255,0.15)">
+      <rect x="476" y="65" width="9" height="4"/>
+      <rect x="487" y="65" width="9" height="4"/>
+      <rect x="498" y="65" width="9" height="4"/>
+      <rect x="476" y="71" width="9" height="4"/>
+      <rect x="487" y="71" width="9" height="4"/>
+      <rect x="498" y="71" width="9" height="4"/>
+    </g>
+
+    <!-- ── SOLAR PANELS 2 ───────────────────────────────────────── -->
+    <g fill="rgba(255,255,255,0.15)">
+      <rect x="1046" y="66" width="9" height="4"/>
+      <rect x="1057" y="66" width="9" height="4"/>
+      <rect x="1068" y="66" width="9" height="4"/>
+      <rect x="1046" y="72" width="9" height="4"/>
+      <rect x="1057" y="72" width="9" height="4"/>
+      <rect x="1068" y="72" width="9" height="4"/>
+    </g>
+
+  </svg>
+</div>
+
+<!-- ── MAIN ───────────────────────────────────────────────────── -->
+<main>
+
+  <div id="panel-main" class="panel active">
+
+    <!-- Source selector (always visible) -->
+    <div class="source-card">
+      <label for="sel-source">Data Source</label>
+      <select id="sel-source" onchange="onSourceChange()">
+        <option value="ieso">IESO — Ontario</option>
+        <option value="aeso">AESO — Alberta</option>
+        <option value="upload">Upload Your Own Data</option>
+      </select>
+    </div>
+
+    <!-- Run card (shown for ieso / aeso) -->
+    <div class="run-card" id="run-card">
+      <div class="run-card-info">
+        <h2 id="run-card-title">Ontario Grid — IESO</h2>
+        <p id="run-card-desc">Weather city: <strong>Goderich, ON</strong> &nbsp;·&nbsp; Source: IESO public XML reports &nbsp;·&nbsp; ~2.5 years of hourly data</p>
+      </div>
+      <button class="btn-run" id="btn-main" onclick="runMarket()">
+        <div class="spinner"></div>
+        <span class="btn-label">&#9654;&nbsp; Run Pipeline</span>
+      </button>
+    </div>
+
+    <!-- Upload section (shown when "upload" is selected) -->
+    <div id="upload-section" style="display:none;">
+
+      <!-- Data format disclaimer -->
+      <div class="upload-disclaimer">
+        <strong>Data Format Requirements</strong>
+        Your file must contain time-stamped energy generation records with at least one column for
+        <em>wind</em> and/or <em>solar</em> output. Please ensure the following before uploading:
+        <ul>
+          <li>
+            <strong>Timestamps</strong> — each row must have a date/time column (e.g.
+            <code>Date</code>, <code>DateTime</code>, or <code>Delivery Date + Hour</code>).
+            Values should be in a standard format such as <code>YYYY-MM-DD HH:MM</code> or
+            ISO 8601. Rows with missing or unparseable timestamps will be skipped.
+          </li>
+          <li>
+            <strong>Wind generation</strong> — a numeric column representing wind power output in
+            MW (e.g. <code>Wind (MW)</code>, <code>WIND</code>). Missing values are treated as
+            zero and flagged in the pipeline log.
+          </li>
+          <li>
+            <strong>Solar generation</strong> — a numeric column representing solar power output in
+            MW (e.g. <code>Solar (MW)</code>, <code>SOLAR</code>). Missing values are treated as
+            zero and flagged in the pipeline log.
+          </li>
+          <li>
+            <strong>AESO (CSV)</strong> — use the standard AESO market-report export. The pipeline
+            expects comma-separated values with a header row.
+          </li>
+          <li>
+            <strong>IESO (XML)</strong> — use the standard IESO Generator Output report XML.
+            Each <code>&lt;DataSet&gt;</code> element should carry a
+            <code>DateFrom</code> attribute and hourly <code>&lt;Data&gt;</code> child nodes.
+          </li>
+        </ul>
+        Files that do not contain recognisable wind or solar columns will produce no model output.
+        When uploading multiple files they must all share the same market format and province.
+      </div>
+
+      <div class="upload-card">
+        <form id="upload-form">
+          <div class="form-section-title">Configuration</div>
+          <div class="form-split">
+            <div class="form-row">
+              <label for="sel-mode">Upload Mode</label>
+              <select id="sel-mode" name="upload_mode">
+                <option value="single">Single file</option>
+                <option value="multi">Multiple files (merged)</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <label for="sel-format">Market Format</label>
+              <select id="sel-format" name="market_format">
+                <option value="aeso">AESO — CSV</option>
+                <option value="ieso">IESO — XML</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-split">
+            <div class="form-row">
+              <label for="sel-province">Province</label>
+              <select id="sel-province" name="province" onchange="updateCityVisibility()">
+                <option value="alberta">Alberta</option>
+                <option value="ontario">Ontario</option>
+                <option value="other">Other (specify city below)</option>
+              </select>
+            </div>
+            <div class="form-row" id="city-row" style="display:none;">
+              <label for="inp-city">City</label>
+              <input type="text" id="inp-city" name="other_city" placeholder="e.g. Calgary" />
+            </div>
+          </div>
+
+          <div class="form-section-title" style="margin-top:0.5rem;">Data File(s)</div>
+          <div class="dropzone" id="dropzone">
+            <p id="file-label">Drag &amp; drop files here, or click to browse</p>
+            <small>Accepted: .csv (AESO format) &nbsp;·&nbsp; .xml (IESO format)</small>
+            <input type="file" id="file-input" name="files" multiple accept=".csv,.xml"
+                   style="display:none" onchange="updateFileLabel()" />
+          </div>
+
+          <button type="submit" class="btn-run" id="btn-upload"
+                  style="width:100%; margin-top:1.5rem;">
+            <div class="spinner"></div>
+            <span class="btn-label">Upload &amp; Run Pipeline</span>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="banner" id="banner-main"></div>
+    <div class="results" id="results-main"></div>
+
+  </div>
+
+</main>
+
+<!-- ── Lightbox ───────────────────────────────────────────────── -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <span class="lb-close" onclick="closeLightbox()">&#x2715;</span>
+  <img id="lb-img" src="" alt="Plot" onclick="event.stopPropagation()" />
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // ── Global chart instances ────────────────────────────────────
+  let windChart = null;
+  let solarChart = null;
+
+  // ── Source descriptions ───────────────────────────────────────
+  const SOURCE_INFO = {
+    ieso: {
+      title: 'Ontario Grid — IESO',
+      desc:  'Weather city: <strong>Goderich, ON</strong> &nbsp;&middot;&nbsp; Source: IESO public XML reports &nbsp;&middot;&nbsp; ~2.5 years of hourly data'
+    },
+    aeso: {
+      title: 'Alberta Grid — AESO',
+      desc:  'Weather city: <strong>Red Deer, AB</strong> &nbsp;&middot;&nbsp; Source: AESO historical CSV reports &nbsp;&middot;&nbsp; ~2.5 years of hourly data'
+    },
+    upload: {
+      title: 'Upload Your Own Data',
+      desc:  'Select and upload your own CSV (AESO format) or XML (IESO format) generation data files.'
+    }
+  };
+
+  // ── Source selector change ────────────────────────────────────
+  function onSourceChange() {
+    const val      = document.getElementById('sel-source').value;
+    const isUpload = val === 'upload';
+
+    document.getElementById('run-card').style.display      = isUpload ? 'none' : '';
+    document.getElementById('upload-section').style.display = isUpload ? 'block' : 'none';
+
+    if (!isUpload) {
+      const info = SOURCE_INFO[val];
+      document.getElementById('run-card-title').textContent = info.title;
+      document.getElementById('run-card-desc').innerHTML    = info.desc;
+    }
+
+    // Clear previous results
+    const banner = document.getElementById('banner-main');
+    const resEl  = document.getElementById('results-main');
+    banner.className  = 'banner';
+    banner.textContent = '';
+    resEl.className   = 'results';
+    resEl.innerHTML   = '';
+
+    if (windChart)  { windChart.destroy();  windChart  = null; }
+    if (solarChart) { solarChart.destroy(); solarChart = null; }
+    window._lastForecastData = null;
+  }
+
+  // ── Run market (IESO / AESO) ──────────────────────────────────
+  async function runMarket() {
+    const market = document.getElementById('sel-source').value;
+    const btn    = document.getElementById('btn-main');
+    const banner = document.getElementById('banner-main');
+    const resEl  = document.getElementById('results-main');
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+    banner.className  = 'banner';
+    banner.textContent = '';
+    resEl.className   = 'results';
+    resEl.innerHTML   = '';
+    if (windChart)  { windChart.destroy();  windChart  = null; }
+    if (solarChart) { solarChart.destroy(); solarChart = null; }
+
+    try {
+      const res  = await fetch(`/run-${market}`);
+      const data = await res.json();
+
+      if (!res.ok) {
+        banner.className  = 'banner error';
+        banner.textContent = `Error ${res.status}: ${data.detail ?? JSON.stringify(data)}`;
+        return;
+      }
+
+      resEl.innerHTML = buildResults(data);
+      resEl.className = 'results visible';
+
+      resEl.querySelectorAll('.plot-wrap img').forEach(img =>
+        img.addEventListener('click', () => openLightbox(img.src))
+      );
+
+    } catch (err) {
+      banner.className  = 'banner error';
+      banner.textContent = `Network error: ${err.message}`;
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  // ── Upload form submit ────────────────────────────────────────
+  document.getElementById('upload-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const fileInput = document.getElementById('file-input');
+    const banner    = document.getElementById('banner-main');
+
+    if (!fileInput.files.length) {
+      banner.className  = 'banner error';
+      banner.textContent = 'Please select at least one file before submitting.';
+      return;
+    }
+
+    const btn   = document.getElementById('btn-upload');
+    const resEl = document.getElementById('results-main');
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+    banner.className  = 'banner';
+    banner.textContent = '';
+    resEl.className   = 'results';
+    resEl.innerHTML   = '';
+    if (windChart)  { windChart.destroy();  windChart  = null; }
+    if (solarChart) { solarChart.destroy(); solarChart = null; }
+
+    try {
+      const formData = new FormData(this);
+      const res  = await fetch('/run-upload', { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (!res.ok) {
+        banner.className  = 'banner error';
+        banner.textContent = `Error ${res.status}: ${data.detail ?? JSON.stringify(data)}`;
+        return;
+      }
+
+      resEl.innerHTML = buildResults(data);
+      resEl.className = 'results visible';
+
+      resEl.querySelectorAll('.plot-wrap img').forEach(img =>
+        img.addEventListener('click', () => openLightbox(img.src))
+      );
+
+    } catch (err) {
+      banner.className  = 'banner error';
+      banner.textContent = `Network error: ${err.message}`;
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  });
+
+  // ── Province visibility ───────────────────────────────────────
+  function updateCityVisibility() {
+    const val = document.getElementById('sel-province').value;
+    document.getElementById('city-row').style.display = val === 'other' ? 'block' : 'none';
+  }
+
+  // ── File label update ─────────────────────────────────────────
+  function updateFileLabel() {
+    const input = document.getElementById('file-input');
+    const label = document.getElementById('file-label');
+    if (input.files.length === 0) {
+      label.innerHTML = 'Drag &amp; drop files here, or click to browse';
+    } else if (input.files.length === 1) {
+      label.textContent = input.files[0].name;
+    } else {
+      label.textContent = `${input.files.length} files selected`;
+    }
+  }
+
+  // ── Dropzone click-to-browse ──────────────────────────────────
+  const dropzone = document.getElementById('dropzone');
+  dropzone.addEventListener('click', () => {
+    document.getElementById('file-input').click();
+  });
+
+  // ── Drag-and-drop ─────────────────────────────────────────────
+  dropzone.addEventListener('dragover', e => {
+    e.preventDefault();
+    dropzone.classList.add('drag-over');
+  });
+  dropzone.addEventListener('dragleave', () => {
+    dropzone.classList.remove('drag-over');
+  });
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('drag-over');
+    const fileInput = document.getElementById('file-input');
+    const dt = new DataTransfer();
+    Array.from(e.dataTransfer.files).forEach(f => dt.items.add(f));
+    fileInput.files = dt.files;
+    updateFileLabel();
+  });
+
+  // ── Build results HTML ────────────────────────────────────────
+  function buildResults(d) {
+    return `
+      <div class="results-header">
+        <h2>Analysis Results</h2>
+        <span class="market-chip">${d.market.toUpperCase()}</span>
+        <span class="city-chip">${esc(d.city)}</span>
+      </div>
+      ${fuelCard('Wind',  '', d.wind,  'wind')}
+      ${fuelCard('Solar', '', d.solar, 'solar')}
+      <div class="forecast-section">
+        <div class="forecast-run-bar">
+          <span>48-Hour Generation Forecast</span>
+          <button class="btn-run btn-forecast" id="btn-forecast-${d.market}"
+                  onclick="runForecast('${d.market}', '${esc(d.city)}')">
+            <div class="spinner"></div>
+            <span class="btn-label">&#9654; Run Forecast</span>
+          </button>
+        </div>
+        <div class="banner" id="banner-forecast-${d.market}"></div>
+        <div id="forecast-chart-wrap-${d.market}"></div>
+      </div>
+    `;
+  }
+
+  // ── Run forecast ──────────────────────────────────────────────
+  async function runForecast(market, city) {
+    const btn    = document.getElementById(`btn-forecast-${market}`);
+    const banner = document.getElementById(`banner-forecast-${market}`);
+    const wrap   = document.getElementById(`forecast-chart-wrap-${market}`);
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+    banner.className  = 'banner';
+    banner.textContent = '';
+    if (wrap) wrap.innerHTML = '';
+    if (windChart)  { windChart.destroy();  windChart  = null; }
+    if (solarChart) { solarChart.destroy(); solarChart = null; }
+
+    try {
+      const url  = `/run-forecast?market=${encodeURIComponent(market)}&city=${encodeURIComponent(city)}`;
+      const res  = await fetch(url);
+      const data = await res.json();
+
+      if (!res.ok) {
+        banner.className  = 'banner error';
+        banner.textContent = data.detail ?? JSON.stringify(data);
+        return;
+      }
+
+      if (wrap) {
+        wrap.innerHTML = buildForecastChartHTML(data);
+        initForecastCharts(data);
+      }
+
+      // Initialise Leaflet map
+      if (data.lat != null && data.lon != null && window.L) {
+        const mapEl = document.getElementById(`map-${market}`);
+        if (mapEl) {
+          const lmap = L.map(mapEl).setView([data.lat, data.lon], 10);
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 19,
+          }).addTo(lmap);
+          L.marker([data.lat, data.lon])
+            .addTo(lmap)
+            .bindPopup(`<strong>${data.city}</strong>`)
+            .openPopup();
+        }
+      }
+
+    } catch (err) {
+      banner.className  = 'banner error';
+      banner.textContent = `Network error: ${err.message}`;
+    } finally {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+    }
+  }
+
+  // ── Build weather table rows ──────────────────────────────────
+  function buildWeatherRows(data) {
+    const tz = data.city_timezone;
+    const timeFmt = new Intl.DateTimeFormat('en-US', {
+      weekday: 'short', hour: '2-digit', minute: '2-digit',
+      hour12: false, timeZone: tz
+    });
+    return data.hours.map(h => {
+      const t     = timeFmt.format(new Date(h.utc_iso + ':00Z'));
+      const temp  = h.temperature_2m     != null ? h.temperature_2m.toFixed(1)        : '–';
+      const wspd  = h.windspeed_10m      != null ? h.windspeed_10m.toFixed(1)         : '–';
+      const cloud = h.cloudcover         != null ? Math.round(h.cloudcover)           : '–';
+      const rad   = h.shortwave_radiation != null ? Math.round(h.shortwave_radiation) : '–';
+      return `<tr>
+        <td>${t}</td>
+        <td>${temp}</td>
+        <td>${wspd}</td>
+        <td>${cloud}</td>
+        <td>${rad}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // ── Forecast confidence helper ────────────────────────────────
+  // Maps the no-lag forecast model R² to a human-readable tier and
+  // returns the HTML for the confidence bar shown under each chart.
+  function confidenceBarHTML(r2) {
+    // R² can be negative when the model is worse than a flat mean.
+    // Clamp to [0, 1] for display purposes.
+    const pct = Math.max(0, Math.min(1, r2 ?? 0)) * 100;
+    let tier, label, title;
+    if (r2 == null || r2 < 0) {
+      tier  = 'conf-none';
+      label = 'Unavailable';
+      title = 'No confidence score — run the pipeline first to train the forecast model.';
+    } else if (r2 >= 0.75) {
+      tier  = 'conf-high';
+      label = 'High';
+      title = `R² = ${r2.toFixed(3)} — the model explains ≥ 75 % of generation variance on held-out data.`;
+    } else if (r2 >= 0.45) {
+      tier  = 'conf-mod';
+      label = 'Moderate';
+      title = `R² = ${r2.toFixed(3)} — the model captures the general trend but has meaningful error.`;
+    } else {
+      tier  = 'conf-low';
+      label = 'Low';
+      title = `R² = ${r2.toFixed(3)} — weather features alone explain less than 45 % of variance. Use with caution.`;
+    }
+    return `
+      <div class="confidence-bar ${tier}" title="${title}">
+        <span class="confidence-label">Forecast confidence</span>
+        <div class="confidence-track">
+          <div class="confidence-fill" style="width:${pct.toFixed(1)}%"></div>
+        </div>
+        <span class="confidence-badge">${label}</span>
+        ${r2 != null && r2 >= 0 ? `<span style="color:#94a3b8;font-size:0.75rem;">R²&nbsp;${r2.toFixed(3)}</span>` : ''}
+      </div>`;
+  }
+
+  // ── Build forecast chart HTML ─────────────────────────────────
+  function buildForecastChartHTML(data) {
+    const mkt = esc(data.market);
+    const cty = esc(data.city);
+    const tz  = esc(data.city_timezone);
+    return `
+      <div class="forecast-layout">
+
+        <!-- Left: map + weather module -->
+        <div class="forecast-left-col">
+          <div class="forecast-map-wrap">
+            <div id="map-${mkt}" class="forecast-map"></div>
+            <div class="forecast-map-caption">
+              <strong>${cty}</strong><br>
+              <small>${tz}</small>
+            </div>
+          </div>
+
+          <div class="weather-module">
+            <div class="weather-module-hdr">&#127757; Weather Forecast &mdash; Next 48 h</div>
+            <div class="weather-table-scroll">
+              <table class="weather-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Temp °C</th>
+                    <th>Wind km/h</th>
+                    <th>Cloud %</th>
+                    <th>Rad W/m²</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${buildWeatherRows(data)}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: wind chart then solar chart -->
+        <div class="forecast-charts-col">
+
+          <div class="forecast-wrap forecast-wind">
+            <div class="forecast-meta">
+              &#128168; <strong>Wind Generation</strong> &nbsp;&middot;&nbsp;
+              ${cty} &nbsp;&middot;&nbsp; ${tz} &nbsp;&middot;&nbsp; Next 48 hours
+            </div>
+            ${confidenceBarHTML(data.wind_r2)}
+            <div style="padding:1.25rem 1.4rem 0.5rem;">
+              <canvas id="forecast-canvas-wind-${mkt}"></canvas>
+            </div>
+            <div class="download-row">
+              <button class="btn-download" onclick="downloadForecastCSV('wind')">&#x2B07; Wind CSV</button>
+              <button class="btn-download" onclick="downloadForecastChart('wind')">&#x2B07; Wind Chart (PNG)</button>
+            </div>
+          </div>
+
+          <div class="forecast-wrap forecast-solar">
+            <div class="forecast-meta">
+              &#9728; <strong>Solar Generation</strong> &nbsp;&middot;&nbsp;
+              ${cty} &nbsp;&middot;&nbsp; ${tz} &nbsp;&middot;&nbsp; Next 48 hours
+            </div>
+            ${confidenceBarHTML(data.solar_r2)}
+            <div style="padding:1.25rem 1.4rem 0.5rem;">
+              <canvas id="forecast-canvas-solar-${mkt}"></canvas>
+            </div>
+            <div class="download-row">
+              <button class="btn-download" onclick="downloadForecastCSV('solar')">&#x2B07; Solar CSV</button>
+              <button class="btn-download" onclick="downloadForecastChart('solar')">&#x2B07; Solar Chart (PNG)</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+  }
+
+  // ── Shared chart options factory ──────────────────────────────
+  function chartOptions(yLabel) {
+    return {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => `${yLabel}: ${ctx.parsed.y.toFixed(1)} MW`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { maxRotation: 45, maxTicksLimit: 24, font: { size: 11 } },
+          grid:  { color: 'rgba(0,0,0,0.04)' }
+        },
+        y: {
+          title: { display: true, text: 'MW' },
+          grid:  { color: 'rgba(0,0,0,0.06)' },
+          beginAtZero: true
+        }
+      }
+    };
+  }
+
+  // ── Initialise two Chart.js instances ────────────────────────
+  function initForecastCharts(data) {
+    const tz = data.city_timezone;
+    const timeFmt = new Intl.DateTimeFormat('en-US', {
+      weekday: 'short', hour: '2-digit', minute: '2-digit',
+      hour12: false, timeZone: tz
+    });
+
+    const labels    = data.hours.map(h => timeFmt.format(new Date(h.utc_iso + ':00Z')));
+    const windData  = data.hours.map(h => h.wind_mw);
+    const solarData = data.hours.map(h => h.solar_mw);
+    const mkt       = data.market;
+
+    const windCanvas  = document.getElementById(`forecast-canvas-wind-${mkt}`);
+    const solarCanvas = document.getElementById(`forecast-canvas-solar-${mkt}`);
+
+    if (windCanvas) {
+      windChart = new Chart(windCanvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Wind MW',
+            data: windData,
+            borderColor: '#3b82f6',
+            backgroundColor: 'rgba(59,130,246,0.13)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 2,
+            pointHoverRadius: 5,
+            borderWidth: 2,
+          }]
+        },
+        options: chartOptions('Wind MW')
+      });
+    }
+
+    if (solarCanvas) {
+      solarChart = new Chart(solarCanvas, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [{
+            label: 'Solar MW',
+            data: solarData,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.13)',
+            fill: true,
+            tension: 0.35,
+            pointRadius: 2,
+            pointHoverRadius: 5,
+            borderWidth: 2,
+          }]
+        },
+        options: chartOptions('Solar MW')
+      });
+    }
+
+    window._lastForecastData = data;
+  }
+
+  // ── Download forecast CSV (wind or solar) ────────────────────
+  function downloadForecastCSV(type) {
+    const data = window._lastForecastData;
+    if (!data) return;
+
+    const tz = data.city_timezone;
+    const timeFmt = new Intl.DateTimeFormat('en-US', {
+      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+      hour: 'numeric', minute: '2-digit', hour12: true,
+      timeZone: tz
+    });
+
+    let csv, filename;
+    if (type === 'solar') {
+      csv = 'Hour,Local Time,Solar MW\n';
+      data.hours.forEach((h, i) => {
+        const localTime = timeFmt.format(new Date(h.utc_iso + ':00Z'));
+        csv += `${i + 1},"${localTime}",${h.solar_mw.toFixed(2)}\n`;
+      });
+      filename = `forecast_solar_${data.market}.csv`;
+    } else {
+      csv = 'Hour,Local Time,Wind MW\n';
+      data.hours.forEach((h, i) => {
+        const localTime = timeFmt.format(new Date(h.utc_iso + ':00Z'));
+        csv += `${i + 1},"${localTime}",${h.wind_mw.toFixed(2)}\n`;
+      });
+      filename = `forecast_wind_${data.market}.csv`;
+    }
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  // ── Download forecast chart as PNG ────────────────────────────
+  function downloadForecastChart(type) {
+    const chart  = type === 'solar' ? solarChart : windChart;
+    if (!chart) return;
+    const market = window._lastForecastData?.market ?? 'chart';
+    const url    = chart.toBase64Image('image/png', 1.0);
+    const a      = document.createElement('a');
+    a.href       = url;
+    a.download   = `forecast_${type}_${market}.png`;
+    a.click();
+  }
+
+  // ── Fuel card ─────────────────────────────────────────────────
+  function fuelCard(label, icon, m, type) {
+    const typeClass = type === 'wind' ? 'fuel-wind' : 'fuel-solar';
+
+    if (!m || m.skipped) {
+      const reason = (m && m.reason) ? m.reason : 'No data returned for this fuel type.';
+      return `
+        <div class="fuel-section ${typeClass}">
+          <div class="fuel-header">
+            <span class="fuel-title">${label} Generation</span>
+          </div>
+          <div class="skipped-body">
+            Insufficient data — no ${label} records found in the uploaded file.<br/>
+            <em>${esc(reason)}</em>
+          </div>
+        </div>
+      `;
+    }
+
+    const bestName = m.best_model === 'linear' ? 'Linear' : 'Polynomial';
+    return `
+      <div class="fuel-section ${typeClass}">
+        <div class="fuel-header">
+          <span class="fuel-icon">${icon}</span>
+          <span class="fuel-title">${label} Generation</span>
+          <span class="best-summary">&#9733; Best: ${bestName} &nbsp; R&sup2; = ${m.best_r2}</span>
+        </div>
+        <div class="model-grid">
+          ${modelCol('Linear',     m.linear,     m.best_model === 'linear')}
+          ${modelCol('Polynomial', m.polynomial, m.best_model === 'polynomial')}
+        </div>
+        <div class="fuel-footer">
+          Best equation: <strong>${esc(m.best_equation)}</strong>
+        </div>
+      </div>
+    `;
+  }
+
+  function r2Color(r2) {
+    if (r2 >= 0.90) return '#15803d';
+    if (r2 >= 0.75) return '#0369a1';
+    if (r2 >= 0.50) return '#d97706';
+    return '#dc2626';
+  }
+
+  function modelCol(name, m, isBest) {
+    const pct      = (m.r2 * 100).toFixed(1);
+    const barPct   = Math.max(0, Math.min(100, m.r2 * 100)).toFixed(1);
+    const barColor = r2Color(m.r2);
+    return `
+      <div class="model-col">
+        <div class="model-col-hdr">
+          <h4>${name} Model</h4>
+          ${isBest ? '<span class="best-pill">&#9733; Best</span>' : ''}
+        </div>
+        <div class="r2-num" style="color:${barColor}">${m.r2}</div>
+        <div class="r2-meta">R&sup2; score &nbsp;&middot;&nbsp; ${pct}% of variance explained</div>
+        <div class="r2-bar-track">
+          <div class="r2-bar-fill" style="width:${barPct}%; background:${barColor}"></div>
+        </div>
+        <div class="eq-box">${esc(m.equation)}</div>
+        <div class="plots-row">
+          <div class="plot-wrap">
+            <div class="plot-label">Scatter</div>
+            <img src="${m.scatter_plot}" alt="${name} scatter" loading="lazy" />
+          </div>
+          <div class="plot-wrap">
+            <div class="plot-label">Time Series</div>
+            <img src="${m.timeseries_plot}" alt="${name} time series" loading="lazy" />
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  // ── Lightbox ──────────────────────────────────────────────────
+  function openLightbox(src) {
+    document.getElementById('lb-img').src = src;
+    document.getElementById('lightbox').classList.add('open');
+  }
+  function closeLightbox() {
+    document.getElementById('lightbox').classList.remove('open');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLightbox(); });
+</script>
+</body>
+</html>

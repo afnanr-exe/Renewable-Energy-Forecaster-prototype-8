@@ -1,0 +1,10 @@
+markets:
+  ieso:
+    xml_dir: "data/ieso/xml/"
+    default_city: "Goderich"
+    timezone: "UTC"
+
+  aeso:
+    csv_dir: "data/aeso_rawcsv"
+    default_city: "Red Deer"
+    timezone: "America/Edmonton"

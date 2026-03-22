@@ -1,0 +1,63 @@
+ Step 1 — Open a terminal in the project folder
+
+  Open Command Prompt or PowerShell, then run:
+
+  cd 
+                                                                                                                                 Or: right-click the Prototype 5.0 folder in File Explorer → Open in Terminal.
+                                                                                                                                 ---
+  Step 2 — Activate the virtual environment
+
+  venv\Scripts\activate
+
+  You will see (venv) appear at the start of your prompt. This tells you the project's Python and all its packages are active.
+
+  ---
+  Step 3 — Start the server
+
+  uvicorn app.main:app --reload
+
+  Wait until you see this output:
+
+  INFO:     Application startup complete.
+  INFO:     Uvicorn running on http://127.0.0.1:8000
+
+  ---
+  Step 4 — Open the app in your browser
+
+  Go to:
+
+  http://localhost:8000
+
+  ---
+  Step 5 — Use the app
+
+  The normal workflow once the page loads:
+
+  1. IESO or AESO tab — click Run Pipeline. This downloads weather data, trains the regression models, and generates plots.
+  Takes ~30–60 seconds.
+  2. Once results appear, click Run Forecast to generate the 48-hour wind/solar prediction.
+  3. Upload Data tab — choose your file format, province/city, upload a CSV or XML file, and click Upload & Run Pipeline.
+
+  ---
+  To stop the server
+
+  Press Ctrl + C in the terminal.
+
+  ---
+  If port 8000 is already taken (rare after a fresh reboot)
+
+  Add --port 8001 to the start command:
+
+  uvicorn app.main:app --reload --port 8001
+
+  Then open http://localhost:8001 instead.
+
+  ---
+  Summary (the 3 commands you always type)
+
+  cd "C:\Users\Mashal\Desktop\Winter 2026 TMU (FINAL SEMESTER)\Capstone\Prototype 6.0"
+  venv\Scripts\activate
+  uvicorn app.main:app --reload
+
+> The 48-hour generation forecast should begin at the time that the "Run Forecast" starts, so from the current time
+  onwards of 48 hours

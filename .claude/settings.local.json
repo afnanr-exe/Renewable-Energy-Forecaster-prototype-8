@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(venv/Scripts/activate:*)",
+      "Bash(source:*)",
+      "Bash(venv/Scripts/uvicorn.exe app.main:app:*)",
+      "Bash(venv/Scripts/python.exe:*)",
+      "Bash(find:*)",
+      "Bash(head:*)",
+      "Bash(\"./venv/Scripts/uvicorn.exe\" app.main:app:*)",
+      "Bash(\"./venv/Scripts/python.exe\":*)",
+      "Bash(cd:*)",
+      "Bash(sleep:*)",
+      "Bash(uvicorn app.main:app --reload)",
+      "Bash(venv/Scripts/uvicorn app.main:app --reload)",
+      "Bash(netstat -ano)",
+      "Bash(echo \"Exit: $?\")",
+      "Bash(taskkill //F //PID 15024 //PID 2380)",
+      "Bash(taskkill //F //IM python.exe)",
+      "Bash(venv/Scripts/python.exe -c \":*)",
+      "Bash(curl -s \"http://127.0.0.1:8000/run-forecast?market=ieso&city=Goderich\")",
+      "Bash(taskkill //F //PID 13876 //PID 15024 //PID 4832 //PID 2380)",
+      "Bash(for pid:*)",
+      "Bash(do tasklist:*)",
+      "Bash(grep -v \"^$\")",
+      "Bash(xargs -I{} cmd //c \"taskkill /F /PID {}\")",
+      "Bash(cmd //c \"netsh int ip delete tcpestab\")",
+      "Bash(cmd //c \"net stop http\")",
+      "Bash(curl -s \"http://127.0.0.1:8001/run-forecast?market=ieso&city=Goderich\")"
+    ]
+  }
+}
