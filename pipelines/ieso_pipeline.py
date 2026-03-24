@@ -62,3 +62,4 @@ def build_ieso_master(xml_dir, output_dir, city, timezone):
         writer.writerows(merged)
 
     return out_path
+print("PIPELINE FINISHED SUCCESSFULLY")
