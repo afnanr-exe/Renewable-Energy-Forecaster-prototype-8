@@ -24,3 +24,4 @@ def download_all_blobs_to_tmp(container_name: str) -> str:
             f.write(container.get_blob_client(blob.name).download_blob().readall())
 
     return local_dir
+#test
