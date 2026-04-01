@@ -31,12 +31,6 @@ class UniversalPipeline:
         features: list[str],
         label: str,
     ) -> dict:
-        """
-        Run regression for one fuel type.  On success returns the normal
-        run_both_models dict.  On failure (e.g. insufficient data for an
-        upload-only fuel type) returns {"skipped": True, "reason": str(e)}
-        so the other fuel type can still be reported.
-        """
         try:
             return run_both_models(
                 csv_path=csv_path,
@@ -108,8 +102,13 @@ class UniversalPipeline:
                 )
 
             elif market == "aeso":
-                input_dir = os.path.join(BASE_DIR, self.config["markets"]["aeso"]["csv_dir"])
-                tz        = self.config["markets"]["aeso"].get("timezone", "America/Edmonton")
+                # ⭐ NEW: Download ALL AESO CSVs from Blob Storage
+                from services.storage_utils import download_all_blobs_to_tmp
+
+                input_dir = download_all_blobs_to_tmp("aesorawdata")
+
+                tz = self.config["markets"]["aeso"].get("timezone", "America/Edmonton")
+
                 master_path = build_aeso_master(
                     input_dir=input_dir,
                     output_dir=market_output_dir,
@@ -146,9 +145,6 @@ class UniversalPipeline:
         wind_df.to_csv(wind_csv_path,   index=False)
         solar_df.to_csv(solar_csv_path, index=False)
 
-        # ---------------- RUN MODELS ----------------
-        # _run_model_safe returns a skipped sentinel instead of raising if a
-        # fuel type has insufficient data (e.g. wind-only or solar-only uploads).
         wind_results = self._run_model_safe(
             csv_path=wind_csv_path,
             target="Wind",
