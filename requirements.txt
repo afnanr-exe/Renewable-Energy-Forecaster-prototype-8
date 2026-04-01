@@ -8,3 +8,4 @@ PyYAML
 requests
 python-multipart
 gunicorn
+azure-storage-blob
