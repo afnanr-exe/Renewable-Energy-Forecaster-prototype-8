@@ -1,4 +1,11 @@
+# --- FIX FOR AZURE 504 TIMEOUT (matplotlib font cache) ---
 import os
+os.environ['MPLCONFIGDIR'] = '/tmp/matplotlib'
+os.makedirs('/tmp/matplotlib', exist_ok=True)
+
+import matplotlib
+matplotlib.use("Agg")
+# ----------------------------------------------------------
 from enum import Enum
 from typing import List, Optional
 
